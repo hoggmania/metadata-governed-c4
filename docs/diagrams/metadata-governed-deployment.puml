@@ -1,0 +1,61 @@
+@startuml
+!pragma layout smetana
+!include <C4/C4_Container>
+
+LAYOUT_TOP_DOWN()
+title Metadata-Governed Deployment and Monitoring System — C4 Container View
+skinparam backgroundColor #FFFFFF
+skinparam nodesep 65
+skinparam ranksep 90
+
+Person(developer, "Developer", "Builds and deploys applications")
+Person(security, "Security / Compliance Team", "Defines metadata and admission policies")
+Person(operator, "Platform Operator", "Operates policy, monitoring, and runtime controls")
+
+System_Ext(cicd, "CI/CD Platform", "Builds OCI artifacts and publishes deployment triggers")
+System_Ext(harness, "Harness", "Orchestrates Helm-based container deployments")
+System_Ext(registry, "OCI Registry", "Stores OCI images, Helm charts, and artifact annotations")
+System_Ext(kubernetes, "Kubernetes Cluster", "Runs containerized workloads")
+System_Ext(vm, "VM Platform", "Cloud or on-prem VM environment")
+System_Ext(bus, "Event Bus", "Kafka, Pub/Sub, EventBridge, RabbitMQ, or equivalent")
+System_Ext(siem, "Observability / SIEM", "Dashboards, alerting, audit, and reporting")
+
+System_Boundary(system, "Metadata-Governed Deployment and Monitoring System") {
+  Container(decoration, "Deployment Decoration Service", "Ansible + Helm integration", "Retrieves OCI metadata and injects it into Kubernetes manifests and VM provisioning definitions")
+  Container(k8sAdmission, "Kubernetes Admission Control", "OPA/Gatekeeper or Kyverno", "Validates container workload metadata before deployment is admitted")
+  Container(vmAdmission, "VM Admission Control", "Provisioning hook / policy service", "Validates VM metadata before provisioning is allowed")
+  Container(monitoring, "Runtime Monitoring Service", "Event collectors and processors", "Collects lifecycle events for containers and VMs, enriches them with metadata, and emits normalized runtime events")
+  Container(metadata, "Metadata Management Service", "Service/API", "Defines required metadata schema, validates metadata structure, and resolves canonical application identity")
+  Container(inventory, "Runtime Inventory Service", "Service/API", "Maintains current and historical inventory of deployed applications, containers, VMs, and state transitions")
+  ContainerDb(database, "Inventory Database", "SQL / NoSQL / Time-series store", "Stores workload state, metadata, and event history")
+  Container(policy, "Policy Repository", "Git / config store", "Stores metadata schema, validation rules, and admission policies")
+}
+
+Rel(developer, cicd, "Commits code and triggers builds")
+Rel(cicd, registry, "Publishes OCI artifacts with annotations")
+Rel(cicd, decoration, "Triggers deployment workflows")
+Rel(harness, decoration, "Invokes chart deployment flow")
+Rel(decoration, registry, "Reads artifact metadata")
+Rel(decoration, k8sAdmission, "Submits decorated Kubernetes resources")
+Rel(decoration, vmAdmission, "Submits decorated VM definitions")
+Rel(k8sAdmission, metadata, "Validates required metadata against schema")
+Rel(vmAdmission, metadata, "Validates required metadata against schema")
+Rel(k8sAdmission, kubernetes, "Allows / denies workload admission")
+Rel(vmAdmission, vm, "Allows / denies VM provisioning")
+Rel(kubernetes, monitoring, "Emits container lifecycle events")
+Rel(vm, monitoring, "Emits VM lifecycle events")
+Rel(monitoring, metadata, "Resolves metadata for event enrichment")
+Rel(monitoring, inventory, "Sends normalized state changes")
+Rel(monitoring, bus, "Publishes enriched runtime events")
+Rel(metadata, registry, "Resolves canonical metadata")
+Rel(metadata, policy, "Loads schema and validation rules")
+Rel(inventory, database, "Reads and writes workload inventory")
+Rel(inventory, siem, "Provides reports, dashboards, and alerts")
+Rel(bus, siem, "Feeds downstream consumers and alerting")
+Rel(security, inventory, "Reviews compliance and audit history")
+Rel(security, policy, "Defines metadata and policy rules")
+Rel(operator, inventory, "Queries runtime inventory and state")
+Rel(operator, policy, "Maintains operational policy")
+
+SHOW_LEGEND()
+@enduml
